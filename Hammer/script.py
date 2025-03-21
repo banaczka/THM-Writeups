@@ -17,7 +17,6 @@ session.post(RESET_URL, data={"email": "tester@hammer.thm"})
 
 
 def brute_force(thread_id, start_code, step):
-    """Funkcja brute-force iterująca po kodach z odpowiednim zakresem."""
     global found
 
     ip_suffix = thread_id
